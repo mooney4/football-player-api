@@ -27,24 +27,12 @@ SECRET_KEY=your_jwt_secret
 Run database migrations (if needed):
 
 bash
-Copy
+
 node importData.js
 Start the API server:
 
 bash
-Copy
+
 npm run dev
-📌 API Endpoints
-Method	Endpoint	Description
-GET	/api/v1.0/players	Get all players
-POST	/api/v1.0/players	Create a new player (Auth required)
-GET	/api/v1.0/players/:id	Get player by ID
-PUT	/api/v1.0/players/:id	Update player stats (Auth required)
-DELETE	/api/v1.0/players/:id	Delete player (Auth required)
-🛠 Technologies Used
-Node.js & Express.js
-PostgreSQL (with pg for queries)
-JWT Authentication
-Jest & Supertest (for testing)
-📌 License
+
 MIT License
