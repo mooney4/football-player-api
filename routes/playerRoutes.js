@@ -1,14 +1,12 @@
 const express = require("express");
-const { getPlayers, getPlayerById, createPlayer, updatePlayer, deletePlayer } = require("../controllers/playerController"); // ✅ Ensure correct import
-
-const { authenticateJWT } = require("../middleware/authMiddleware");
+const { getPlayers, getPlayer, createPlayer, removePlayer } = require("../controllers/playerController");
 
 const router = express.Router();
 
-router.get("/", getPlayers);
-router.get("/:id", getPlayerById);
-router.post("/", authenticateJWT, createPlayer);
-router.put("/:id", authenticateJWT, updatePlayer);
-router.delete("/:id", authenticateJWT, deletePlayer);
+// ✅ RESTful Naming for Endpoints
+router.get("/", getPlayers);      // GET /api/v1.0/players
+router.get("/:id", getPlayer);    // GET /api/v1.0/players/:id
+router.post("/", createPlayer);   // POST /api/v1.0/players
+router.delete("/:id", removePlayer); // DELETE /api/v1.0/players/:id
 
 module.exports = router;

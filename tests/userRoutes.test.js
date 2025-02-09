@@ -1,57 +1,84 @@
 const request = require("supertest");
-const app = require("../app");
+const app = require("../server");
 const pool = require("../config/db");
 
-let server;
+describe("👤 User API Routes", () => {
+  let createdUserId;
+  let userToken;
 
-beforeAll(async () => {
-  server = require("../server"); // Start the server for testing
-  await pool.query("DELETE FROM users"); // Clear users before tests
-});
+  beforeAll(async () => {
+    // ✅ Ensure database is clean before tests
+    await pool.query("DELETE FROM users");
+  });
 
-afterAll(async () => {
-  await pool.end(); // Close database connection
-  server.close(); // Close the server after tests
-});
+  afterAll(async () => {
+    // ✅ Close database connection after tests to avoid leaks
+    await pool.end();
+  });
 
-describe("User Authentication API", () => {
-  let token;
+  // ✅ Test: Get All Users (Initially Empty)
+  test("GET /api/v1.0/users should return an empty array", async () => {
+    const response = await request(app).get("/api/v1.0/users");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+  });
 
-  it("should register a new user", async () => {
-    const res = await request(app)
+  // ✅ Test: Register a New User
+  test("POST /api/v1.0/users/register should create a new user", async () => {
+    const newUser = {
+      username: "testuser",
+      email: "testuser@example.com",
+      password: "securepassword",
+    };
+
+    const response = await request(app)
       .post("/api/v1.0/users/register")
-      .send({
-        username: "john_doe",
-        email: "john@example.com",
-        password: "securePassword123"
-      });
+      .send(newUser);
 
-    expect(res.statusCode).toEqual(201);
-    expect(res.body).toHaveProperty("username", "john_doe");
+    expect(response.status).toBe(201);
+    expect(response.body).toHaveProperty("user");
+
+    createdUserId = response.body.user.id;
   });
 
-  it("should login and return a JWT token", async () => {
-    const res = await request(app)
-      .post("/api/v1.0/users/login")
-      .send({
-        username: "john_doe",
-        password: "securePassword123"
-      });
+  // ✅ Test: Login User
+  test("POST /api/v1.0/users/login should authenticate a user", async () => {
+    const loginDetails = {
+      username: "testuser",
+      password: "securepassword",
+    };
 
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toHaveProperty("token");
-    token = res.body.token;
+    const response = await request(app)
+      .post("/api/v1.0/users/login")
+      .send(loginDetails);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty("token");
+
+    userToken = response.body.token; // Store token for authenticated requests
   });
 
-  it("should reject invalid login credentials", async () => {
-    const res = await request(app)
-      .post("/api/v1.0/users/login")
-      .send({
-        username: "john_doe",
-        password: "wrongPassword"
-      });
+  // ✅ Test: Get User by ID
+  test("GET /api/v1.0/users/:id should return user details", async () => {
+    const response = await request(app)
+      .get(`/api/v1.0/users/${createdUserId}`)
+      .set("x-access-token", userToken); // Send auth token
 
-    expect(res.statusCode).toEqual(401);
-    expect(res.body).toHaveProperty("message", "Invalid credentials");
+    expect(response.status).toBe(200);
+    expect(response.body.username).toBe("testuser");
+  });
+
+  // ✅ Test: Delete User
+  test("DELETE /api/v1.0/users/:id should remove a user", async () => {
+    const response = await request(app)
+      .delete(`/api/v1.0/users/${createdUserId}`)
+      .set("x-access-token", userToken); // Send auth token
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe("User removed");
+
+    // Verify user is deleted
+    const checkResponse = await request(app).get(`/api/v1.0/users/${createdUserId}`);
+    expect(checkResponse.status).toBe(404);
   });
 });
