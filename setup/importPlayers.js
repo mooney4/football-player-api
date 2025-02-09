@@ -1,5 +1,5 @@
 const fs = require("fs");
-const pool = require("./config/db");
+const pool = require("../config/db");
 
 const importData = async () => {
   try {

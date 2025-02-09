@@ -1,40 +1,54 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const pool = require("../config/db");
-const SECRET_KEY = process.env.SECRET_KEY || "super-secret";
+const { getUserByUsername, createUser } = require("../models/userModel");
 
-// ✅ Ensure functions exist and are exported properly
-
-// Register a new user
 const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
+
+    // Check if user already exists
+    const existingUser = await getUserByUsername(username);
+    if (existingUser) {
+      return res.status(400).json({ message: "Username already taken" });
+    }
+
+    // Hash password before saving
     const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      "INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *",
-      [username, email, hashedPassword]
-    );
-    res.status(201).json(result.rows[0]);
+
+    // Save user
+    await createUser({ username, email, password: hashedPassword });
+
+    res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
-    res.status(400).json({ message: "Registration failed", error });
+    res.status(500).json({ message: "Error registering user", error });
   }
 };
 
-// Login a user
 const loginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
-    const user = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
 
-    if (user.rows.length === 0 || !(await bcrypt.compare(password, user.rows[0].password))) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    // Check if user exists
+    const user = await getUserByUsername(username);
+    if (!user) {
+      return res.status(400).json({ message: "Invalid username or password" });
     }
 
-    const token = jwt.sign({ username: user.rows[0].username }, SECRET_KEY, { expiresIn: "30m" });
-    res.json({ token, _id: user.rows[0].id, username: user.rows[0].username });
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid username or password" });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ id: user.id, username: user.username }, process.env.SECRET_KEY, {
+      expiresIn: "1h",
+    });
+
+    res.json({ message: "Login successful", token });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    res.status(500).json({ message: "Error logging in", error });
   }
 };
 
-module.exports = { registerUser, loginUser }; // ✅ Ensure functions are exported correctly
+module.exports = { registerUser, loginUser };
